@@ -1,17 +1,16 @@
-from django.views.generic import ListView, DetailView, TemplateView, FormView
+from django.views.generic import ListView, DetailView, FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from rest_framework.response import Response
 from SiteForDSBot.settings import BASE_DIR
 from rest_framework.views import APIView
 from django.utils.text import slugify
+from django.shortcuts import redirect
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views import View
 import shortuuid as shortuuid
-from . import discord_api
 from . import models
 from . import forms
 import psycopg2
@@ -57,7 +56,7 @@ class MainView(ListView, FormView):
             connection = connect_db()
             cursor = connection.cursor()
 
-            cursor.execute("SELECT * FROM users ORDER BY points DESC")
+            cursor.execute("SELECT * FROM users ORDER BY points DESC LIMIT 100")
 
             users = cursor.fetchall()
         except:
@@ -68,20 +67,29 @@ class MainView(ListView, FormView):
         return users
 
 
+'''
+Проверка данных формы на валидность
+возвращает словарь с ошибками / пустой словарь
+'''
+def checking_form_data(username, password, email) -> dict:
+    errors = {}
+    if models.CustomUser.objects.filter(username__iexact=username).exists():
+        errors['username'] = 'Пользователь с таким именем уже существует!'
+    if len(password) < 8:
+        errors['password'] = 'Пароль должен состоять минимум из 8 символов'
+    if models.CustomUser.objects.filter(email__iexact=email).exists():
+        errors['email'] = 'Пользователь с такой почтой уже существует!'
+    return errors
+
+
 class RegistrationView(View):
     def post(self, request):
         username = str(request.POST.get('username'))
         password = str(request.POST.get('password'))
         email = str(request.POST.get('email'))
 
-        # Проверка данных формы
-        errors = {}
-        if models.CustomUser.objects.filter(username__iexact=username).exists():
-            errors['username'] = 'Пользователь с таким именем уже существует!'
-        if len(password) < 8:
-            errors['password'] = 'Пароль должен состоять минимум из 8 символов'
-        if models.CustomUser.objects.filter(email__iexact=email).exists():
-            errors['email'] = 'Пользователь с такой почтой уже существует!'
+        # проверяем форму на валидность
+        errors = checking_form_data(username, password, email)
 
         if errors:
             return JsonResponse({'status': 'error', 'errors': errors})
@@ -144,11 +152,15 @@ class ProfileView(LoginRequiredMixin, ListView):
     context_object_name = 'user'
 
     def get_queryset(self):
-        pk = self.request.GET.get('user_pk')
-        if pk:
-            user = models.CustomUser.users.get(pk=pk)
+        try:
+            slug = self.kwargs['slug']
+        except:
+            slug = None
+
+        if slug:
+            user = models.CustomUser.users.get(slug=slug)
         else:
-            user = models.CustomUser.users.get(pk=self.request.user.pk)
+            user = models.CustomUser.users.get(slug=self.request.user.slug)
         user_ds = None
 
         if user.is_authorized:
@@ -174,14 +186,14 @@ id пользователя, который написал боту и токе�
 class AuthorizUser(APIView):
     def post(self, request):
         try:
-            access_token = request.POST.get('access_token')
+            access_token = request.headers['Access'] # получаем токен доступа
             env = environ.Env()
             environ.Env.read_env(env_file=os.path.join(BASE_DIR, '.env'))
             if access_token != env('access_token'):
-                return Response({'status': 'error', 'message': 'Incorrect  access token'})
+                return Response({'status': 'error', 'message': 'Incorrect access token'})
 
-            token = request.POST.get('token')  # токен пользователя на сайте
-            user = request.POST.get('user')  # id пользователя в дискорд
+            token = request.headers['Token']  # токен пользователя на сайте
+            user = request.headers['User']  # id пользователя в дискорд
             user_in_db = models.CustomUser.objects.get(token=token)
             if user_in_db.is_authorized:
                 '''
