@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ user.user.username }}</title>
     <link rel="stylesheet" type="text/css" href="{% static 'css/card_style.css' %}">
-    <link rel="stylesheet" href="{% static 'css/profile_style.css' %}">
+<!--    <link rel="stylesheet" href="{% static 'css/profile_style.css' %}">-->
     <style>
     #popup-container {
       display: none;
@@ -51,6 +51,189 @@
     border-radius: 10px;
 }
   </style>
+    <style>
+
+a   {
+        text-decoration: none;
+        color: white;
+    }
+
+
+th, td  {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #555555;
+        }
+
+.avatar {
+          border-radius: 50%;
+          width: 50px;
+          height: 50px;
+        }
+
+tr:hover {
+          background-color: #2e2e2e;
+         }
+
+body {
+    background-color: #20232a;
+    color: #61dafb;
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+}
+
+.profile-container {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 20px;
+    background-color: #282c34;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.profile-header {
+    text-align: center;
+}
+
+.user_avatar {
+    border-radius: 50%;
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+}
+
+#secret-code {
+    margin-top: 10px;
+    display: none;
+}
+
+.server-list {
+    margin-top: 30px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    border: 1px solid #61dafb;
+    padding: 8px;
+    text-align: left;
+}
+
+.hidden {
+    display: none;
+}
+
+.glow-on-hover {
+    width: 220px;
+    height: 50px;
+    border: none;
+    outline: none;
+    color: #fff;
+    background: #20232a;
+    cursor: pointer;
+    position: relative;
+    z-index: 0;
+    border-radius: 10px;
+}
+
+.glow-on-hover:before {
+    content: '';
+    background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+    position: absolute;
+    top: -2px;
+    left:-2px;
+    background-size: 400%;
+    z-index: -1;
+    filter: blur(5px);
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    animation: glowing 20s linear infinite;
+    opacity: 0;
+    transition: opacity .3s ease-in-out;
+    border-radius: 10px;
+}
+
+.glow-on-hover:active {
+    color: #000
+}
+
+.glow-on-hover:active:after {
+    background: transparent;
+}
+
+.glow-on-hover:hover:before {
+    opacity: 1;
+}
+
+.glow-on-hover:after {
+    z-index: -1;
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: #20232a;
+    left: 0;
+    top: 0;
+    border-radius: 10px;
+}
+
+@keyframes glowing {
+    0% { background-position: 0 0; }
+    50% { background-position: 400% 0; }
+    100% { background-position: 0 0; }
+}
+
+.button7
+{
+  font-weight: 700;
+  color: white;
+  text-decoration: none;
+  padding: .8em 1em calc(.8em + 3px);
+  border-radius: 3px;
+  background: rgb(64,199,129);
+  box-shadow: 0 -3px rgb(53,167,110) inset;
+  transition: 0.2s;
+}
+
+.button7:hover
+{
+  background: rgb(53, 167, 110);
+}
+
+.button7:active
+{
+  background: rgb(33,147,90);
+  box-shadow: 0 3px rgb(33,147,90) inset;
+}
+
+
+a.button6
+{
+  font-weight: 700;
+  color: white;
+  text-decoration: none;
+  padding: .8em 1em calc(.8em + 3px);
+  border-radius: 3px;
+  background: rgb(225,0,50);
+  box-shadow: 0 -3px rgb(200,10,20) inset;
+  transition: 0.2s;
+}
+
+a.button6:hover
+{
+  background: rgb(180, 20, 30);
+}
+
+a.button6:active
+{
+  background: rgb(225,0,50);
+  box-shadow: 0 3px rgb(33,147,90) inset;
+}
+    </style>
 </head>
 <body>
 <a style="color: #61dafb;" href="{% url 'main_page' %}">
@@ -64,9 +247,9 @@
 
 <div class="profile-container">
     <div class="profile-header">
-        {% if user.user_ds %}
-            {% if user.user_ds.0.9 != "None" %}
-            <img src="{{ user.user_ds.0.9 }}" class="user_avatar">
+        {% if user_ds %}
+            {% if user_ds.0.9 != "None" %}
+            <img src="{{ user_ds.0.9 }}" class="user_avatar">
             {% else %}
             <img src="{% static 'img/noimg.png' %}" class="user_avatar">
             {% endif %}
@@ -74,26 +257,26 @@
             <img src="{% static 'img/noimg.png' %}" class="user_avatar">
         {% endif %}
 
-        <h1>{{ user.user.username }}</h1>
-        {% if user.user_ds %}
-        <h2>{{ user.user_ds.0.8 }}</h2>
+        <h1>{{ user.username }}</h1>
+        {% if user_ds %}
+        <h2>{{ user_ds.0.8 }}</h2>
         {% else %}
         <h2>Дискорд аккаунт ещё не привязан!</h2>
         {% endif %}
 
-        {% if user.user.is_authorized == False %}
-            {% if user.user.pk == request.user.pk %}
+        {% if user.is_authorized == False %}
+            {% if user.pk == request.user.pk %}
                 <button class="glow-on-hover" onclick="toggleSecret()">Открыть токен</button>
                 <div style="display: none;" id="secret" class="secret-code">
-                    {{ user.user.token }}
+                    {{ user.token }}
                 </div>
             {% endif %}
         {% else %}
-            {% if user.user.pk == request.user.pk %}
+            {% if user.id == request.user.pk %}
                 ваш аккаунт уже привязан к <b>Discord</b>
                 <div id="popup-container" style="background-color: #20232a;">
                     <p>Отвязать аккаунт дискорд?</p>
-                    <a class="button6" href="{% url 'anauthoriz' slug=user.user.slug %}">Да</a>
+                    <a class="button6" href="{% url 'anauthoriz' slug=user.slug %}">Да</a>
                     <button class="button7" id="no-btn" onclick="confirmAction(false)">Нет</button>
                 </div>
 
@@ -112,7 +295,7 @@
         {% endif %}
     </div>
 
-    {% if user.user.is_authorized %}
+    {% if user.is_authorized %}
     <table id="userTable">
         <thead>
         <tr>
@@ -124,7 +307,7 @@
         </tr>
         </thead>
         <tbody>
-        {% for item in user.user_ds %}
+        {% for item in user_ds %}
         <tr>
             <td class="user-number"></td>
             <td>

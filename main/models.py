@@ -1,6 +1,5 @@
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
-from django.urls import reverse
 
 
 class CustomUserManager(models.Manager):
@@ -25,9 +24,6 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
-
-    # def get_absolute_url(self):
-    #     return reverse('', kwargs={'slug': self.slug})
 
     class Meta:
         verbose_name = 'Пользователь'
