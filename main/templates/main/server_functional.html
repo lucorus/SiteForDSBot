@@ -5,24 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-    <link rel="stylesheet" href="{% static 'css/table_style.css' %}">
-    <style>
-        .cardd {
-            width: 300px;
-            background-color: #444444;
-            padding: 20px;
-            border-radius: 10px;
-            position: relative;
-        }
-        .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            color: #ff5656;
-            font-size: 24px;
-            cursor: pointer;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'css/server_functional_style.css' %}">
 </head>
 <body>
 <a style="color: #61dafb;" href="{% url 'server_info' server_id=user_ds.5 %}">
@@ -44,8 +27,17 @@
     <br><br>
     {% deposit_info user_ds.0 as deposit %}
     {% if deposit %}
-        <div class="cardd">
-            <a methods="post" href="{% url 'delete_deposit' deposit_uuid=deposit.0 user_uuid=user_ds.0 user_points=user_ds.2 deposit_points=deposit.5 server_id=user_ds.5 %}"><span class="close-btn">&#10005;</span></a>
+        <div class="deposit_card">
+            <form method="post" class="d-flex" enctype="multipart/form-data"
+                  action="{% url 'delete_deposit' %}">
+                {% csrf_token %}
+                <input hidden="hidden" name="deposit_uuid" value="{{ deposit.0 }}">
+                <input hidden="hidden" name="user_uuid" value="{{ user_ds.0 }}">
+                <input hidden="hidden" name="user_points" value="{{ user_ds.2 }}">
+                <input hidden="hidden" name="deposit_points" value="{{ deposit.5 }}">
+                <input hidden="hidden" name="server_id" value="{{ user_ds.5 }}">
+                <button type="submit" class="close-btn">&#10005;</button>
+            </form>
         <p><b>Информация о вкладе:</b></p>
         <p>Дата создания: {{ deposit.3 }}</p>
         <p>Изначальное количество баллов: {{ deposit.2 }}</p>
@@ -54,22 +46,17 @@
     {% else %}
         <br>
             <h3><b>Введите размер депозита</b></h3>
-        <form action="{% url 'create_deposit' user_uuid=user_ds.0 user_points=user_ds.2 server_id=user_ds.5 %}" method="post" class="d-flex" enctype="multipart/form-data">
+        <form action="{% url 'create_deposit' %}" id="numberForm" method="post" class="d-flex" enctype="multipart/form-data">
             {% csrf_token %}
+            <span id="PointsError" class="error"></span>
             <input type="number" name="points" class="form-control form-control-lg bg-dark text-white" id="numberInput" placeholder="" aria-label="Введите число" aria-describedby="clearButton">
+            <input hidden="hidden" name="user_uuid" value="{{ user_ds.0 }}">
+            <input hidden="hidden" name="user_points" value="{{ user_ds.2 }}">
+            <input hidden="hidden" name="server_id" value="{{ user_ds.5 }}">
             <button type="reset" style="background-color: #18b7f4; border: 1.5px #305875 solid; border-radius: 20px" id="clearButton" class="btn btn-danger" onclick="clearInput()">Очистить</button>
             <br>
             <button style="margin-top: 10px; background-color: #18b7f4; border: 1.5px #305875 solid; border-radius: 20px" type="submit">Создать</button>
-
         </form>
-
-
-        <script>
-            clearInput():
-            function clearInput() {
-            document.getElementById('numberInput').value = '';
-            }
-        </script>
     {% endif %}
 </div>
 

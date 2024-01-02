@@ -1,4 +1,3 @@
-from django.urls import reverse
 from django.views.generic import ListView, DetailView, FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -219,7 +218,7 @@ def calculate_percent(points, time_delta):
         return round(points)
 
 
-# Изменяет кол-во баллов пользователя по его вкладу (возвращает True если было изменение, а иначе False)
+# Изменяет кол-во баллов пользователя по его вкладу в базе данных (возвращает True если было изменение, а иначе False)
 def calculate_deposit(deposit_uuid: str, points: int, deposit_last_update_time_time: str) -> bool:
     try:
         # находим кол-во дней со дня создания счёта
@@ -246,36 +245,36 @@ def calculate_deposit(deposit_uuid: str, points: int, deposit_last_update_time_t
             pass
 
 
+# отображает информацию о депозите / выводит форму для создания депозита
 class DepositView(LoginRequiredMixin, APIView):
     def get(self, request, user_id: str, server_id: int):
         user_data = get_user_info(user_id=user_id, server_id=server_id)
         return render(request, 'main/server_functional.html', {'user_ds': user_data[0]})
 
 
+# создаёт депозит
 class CreateDepositView(LoginRequiredMixin, APIView):
-    def post(self, request, user_uuid: str, user_points: int, server_id: int):
+    def post(self, request):
         try:
-            points = request.POST.get('points')
-            print(points)
-            points = int(points)
+            points = int(request.POST.get('points'))
+            user_points = int(request.POST.get('user_points'))
+            user_uuid = request.POST.get('user_uuid')
+            server_id = int(request.POST.get('server_id'))
             if points < 20 or user_points < points:
-                # return Response({'status': 'error', 'message': 'Вы ввели некорректны размер вклада'})
                 return redirect('server_info', server_id=server_id)
             else:
                 connection = connect_db()
                 cursor = connection.cursor()
                 cursor.execute(
                     '''
-                    INSERT INTO deposit VALUES(%s, %s, %s, %s, %s, %s)
-                    ''', (str(uuid.uuid4()), user_uuid, points, time_now(), time_now(), points)
-                )
-                cursor.execute(
-                    '''
-                    UPDATE users SET points=%s WHERE uuid=%s
-                    ''', (user_points-points, user_uuid)
+                    INSERT INTO deposit VALUES(%s, %s, %s, %s, %s, %s);
+                    UPDATE users SET points=%s WHERE uuid=%s;
+                    ''', (
+                            str(uuid.uuid4()), user_uuid, points, time_now(),
+                            time_now(), points, user_points-points, user_uuid
+                         )
                 )
                 connection.commit()
-                #return Response({'status': 'success'})
                 return redirect('server_info', server_id=server_id)
         except Exception as ex:
                 print(ex)
@@ -284,34 +283,37 @@ class CreateDepositView(LoginRequiredMixin, APIView):
                 close_db(cursor, connection)
             except:
                 pass
-        return redirect('server_info', server_id=server_id)
-        #return Response({'status': 'error', 'message': 'Неизвестная ошибка'})
+        return redirect('main_page')
 
 
+# удаляет депозит
 class DeleteDepositView(LoginRequiredMixin, APIView):
-    def get(self, request, deposit_uuid: str, user_uuid: str, user_points: int, deposit_points: int, server_id: int):
+    def post(self, request):
         try:
+            deposit_uuid = request.POST.get('deposit_uuid')
+            user_uuid = request.POST.get('user_uuid')
+            user_points = int(request.POST.get('user_points'))
+            deposit_points = int(request.POST.get('deposit_points'))
+            server_id = int(request.POST.get('server_id'))
+
             connection = connect_db()
             cursor = connection.cursor()
             cursor.execute(
                 '''
-                DELETE FROM deposit WHERE uuid=%s
-                ''', (deposit_uuid, )
-            )
-            cursor.execute(
-                '''
+                DELETE FROM deposit WHERE uuid=%s;
                 UPDATE users SET points=%s WHERE uuid=%s
-                ''', (user_points + deposit_points, user_uuid)
+                ''', (deposit_uuid, user_points + deposit_points, user_uuid)
             )
             connection.commit()
             return redirect('server_info', server_id=server_id)
-        except:
-            return redirect('server_info', server_id=server_id)
+        except Exception as ex:
+            print(ex)
         finally:
             try:
                 close_db(cursor, connection)
             except:
-                return redirect('server_info', server_id=server_id)
+                pass
+        return redirect('main_page')
 
 
 class ServerInfoApiView(APIView):
