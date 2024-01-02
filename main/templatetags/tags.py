@@ -38,14 +38,19 @@ def on_server(user_id: str, server_id: int):
     return False
 
 
+# берём данные о вкладе пользователя и если надо, то обновляем информацию о нём
 @register.simple_tag(name='deposit_info')
 def deposit_info(user_uuid):
     try:
         deposit = views.get_deposit_info(user_uuid)
         if len(deposit) > 0:
+            change = views.calculate_deposit(deposit[0], deposit[5], deposit[4])
+            if change:
+                deposit = views.get_deposit_info(user_uuid)
             return deposit
         else:
             return False
-    except:
+    except Exception as ex:
+        print(ex)
         return False
 

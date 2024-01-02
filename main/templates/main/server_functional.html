@@ -36,18 +36,17 @@
 <div align="center">
     <img style="border-radius: 50%; margin-bottom: 1%" width="16%" height="16%" src="{{ user_ds.7 }}" alt="">
     <h3 style="margin-bottom: 10px">{{ user_ds.6 }}</h3>
-    {% include 'main/card.html' %}
 </div>
 
 
-<!--{{ user_ds }}-->
-
 <div align="center">
     У вас есть {{ user_ds.2 }} баллов:
+    <br><br>
     {% deposit_info user_ds.0 as deposit %}
     {% if deposit %}
         <div class="cardd">
             <a methods="post" href="{% url 'delete_deposit' deposit_uuid=deposit.0 user_uuid=user_ds.0 user_points=user_ds.2 deposit_points=deposit.5 server_id=user_ds.5 %}"><span class="close-btn">&#10005;</span></a>
+        <p><b>Информация о вкладе:</b></p>
         <p>Дата создания: {{ deposit.3 }}</p>
         <p>Изначальное количество баллов: {{ deposit.2 }}</p>
         <p>Конечное количество баллов: {{ deposit.5 }}</p>
@@ -57,7 +56,7 @@
             <h3><b>Введите размер депозита</b></h3>
         <form action="{% url 'create_deposit' user_uuid=user_ds.0 user_points=user_ds.2 server_id=user_ds.5 %}" method="post" class="d-flex" enctype="multipart/form-data">
             {% csrf_token %}
-            <input type="number" class="form-control form-control-lg bg-dark text-white" id="numberInput" placeholder="" aria-label="Введите число" aria-describedby="clearButton">
+            <input type="number" name="points" class="form-control form-control-lg bg-dark text-white" id="numberInput" placeholder="" aria-label="Введите число" aria-describedby="clearButton">
             <button type="reset" style="background-color: #18b7f4; border: 1.5px #305875 solid; border-radius: 20px" id="clearButton" class="btn btn-danger" onclick="clearInput()">Очистить</button>
             <br>
             <button style="margin-top: 10px; background-color: #18b7f4; border: 1.5px #305875 solid; border-radius: 20px" type="submit">Создать</button>

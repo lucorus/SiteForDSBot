@@ -209,6 +209,43 @@ def get_user_info(user_id: str, server_id: int=None) -> list:
         return []
 
 
+# Вычисляет сколько баллов получил пользователь по депозиту с процентом contribution_coefficient
+def calculate_percent(points, time_delta):
+    points = points * 0.05 + points
+    time_delta -= 1
+    if time_delta > 0:
+        return calculate_percent(points, time_delta)
+    else:
+        return round(points)
+
+
+# Изменяет кол-во баллов пользователя по его вкладу (возвращает True если было изменение, а иначе False)
+def calculate_deposit(deposit_uuid: str, points: int, deposit_last_update_time_time: str) -> bool:
+    try:
+        # находим кол-во дней со дня создания счёта
+        time_delta = datetime.strptime(time_now(), "%Y/%m/%d/%H/%M") \
+                 - datetime.strptime(deposit_last_update_time_time, "%Y/%m/%d/%H/%M")
+        time_delta = time_delta.total_seconds() // 86400
+        if time_delta >= 1:
+            points = calculate_percent(points, time_delta)
+            connection = connect_db()
+            cursor = connection.cursor()
+            cursor.execute(
+                '''
+                UPDATE deposit SET current_points=$1 AND last_update=$2 WHERE uuid=$3
+                ''', points, time_now(), deposit_uuid)
+            connection.commit()
+            return True
+        return False
+    except:
+        return False
+    finally:
+        try:
+            close_db(cursor, connection)
+        except:
+            pass
+
+
 class DepositView(LoginRequiredMixin, APIView):
     def get(self, request, user_id: str, server_id: int):
         user_data = get_user_info(user_id=user_id, server_id=server_id)
@@ -218,8 +255,9 @@ class DepositView(LoginRequiredMixin, APIView):
 class CreateDepositView(LoginRequiredMixin, APIView):
     def post(self, request, user_uuid: str, user_points: int, server_id: int):
         try:
-            points = int(request.POST.get('numberInput'))
+            points = request.POST.get('points')
             print(points)
+            points = int(points)
             if points < 20 or user_points < points:
                 # return Response({'status': 'error', 'message': 'Вы ввели некорректны размер вклада'})
                 return redirect('server_info', server_id=server_id)
@@ -228,7 +266,7 @@ class CreateDepositView(LoginRequiredMixin, APIView):
                 cursor = connection.cursor()
                 cursor.execute(
                     '''
-                    INSERT INTO deposit VALUES($1, $2, $3, $4, $5, $6)
+                    INSERT INTO deposit VALUES(%s, %s, %s, %s, %s, %s)
                     ''', (str(uuid.uuid4()), user_uuid, points, time_now(), time_now(), points)
                 )
                 cursor.execute(
@@ -236,7 +274,9 @@ class CreateDepositView(LoginRequiredMixin, APIView):
                     UPDATE users SET points=%s WHERE uuid=%s
                     ''', (user_points-points, user_uuid)
                 )
-                return Response({'status': 'success'})
+                connection.commit()
+                #return Response({'status': 'success'})
+                return redirect('server_info', server_id=server_id)
         except Exception as ex:
                 print(ex)
         finally:
@@ -263,7 +303,7 @@ class DeleteDepositView(LoginRequiredMixin, APIView):
                 UPDATE users SET points=%s WHERE uuid=%s
                 ''', (user_points + deposit_points, user_uuid)
             )
-            print('text')
+            connection.commit()
             return redirect('server_info', server_id=server_id)
         except:
             return redirect('server_info', server_id=server_id)
