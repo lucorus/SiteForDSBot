@@ -268,7 +268,7 @@ a.button6:active
             {% if user.id == request.user.pk %}
                 <button class="glow-on-hover" onclick="toggleSecret()">Открыть токен</button>
                 <div style="display: none;" id="secret" class="secret-code">
-                    {{ user.token }}
+                    {{ user.token }} <a href="{% url 'change_token' %}">()</a>
                 </div>
             {% endif %}
         {% else %}

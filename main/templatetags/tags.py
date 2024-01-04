@@ -1,5 +1,8 @@
 from django import template
 from .. import views
+import logging
+
+logger = logging.getLogger('main')
 
 register = template.Library()
 
@@ -21,21 +24,10 @@ def level(exp):
 @register.simple_tag(name='on_server')
 def on_server(user_id: str, server_id: int):
     try:
-        connection = views.connect_db()
-        cursor = connection.cursor()
-
-        cursor.execute('''
-        SELECT user_id FROM users WHERE server_id=%s
-        ''', (server_id, ))
-        users = cursor.fetchall()
-
-        if (user_id,) in users:
-            return user_id
-    except:
-        pass
-    finally:
-        views.close_db(cursor, connection)
-    return False
+        return views.on_server(user_id, server_id)
+    except Exception as ex:
+        logger.error(ex)
+        return False
 
 
 # берём данные о вкладе пользователя и если надо, то обновляем информацию о нём
@@ -51,6 +43,6 @@ def deposit_info(user_uuid):
         else:
             return False
     except Exception as ex:
-        print(ex)
+        logger.error(ex)
         return False
 

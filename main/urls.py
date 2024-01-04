@@ -13,13 +13,14 @@ urlpatterns = [
     path('login', views.UserLoginView.as_view(), name='login'),
     path('logout', views.user_logout, name='logout'),
     path('profile/<slug:slug>', views.ProfileView.as_view(), name='profile'),
+    path('change_token', views.ChangeToken.as_view(), name='change_token'),
 
     # api
     path('user/<str:user_id>/<int:server_id>', views.UserInfoView.as_view(), name='user_info'),
     path('user/<str:user_id>', views.UserInfoView.as_view(), name='user_info'),
     path('server_info_api/<int:server_id>', views.ServerInfoApiView.as_view(), name='server_info_api'),
 
-    # привязывание / отвязывание аккаунта в дискорд с аккаунтом на сайте
+    # взаимодействие аккаунта в дискорд с аккаунтом на сайте
     path('authorize_user', views.AuthorizUser.as_view(), name='authorize_user'),
     path('AnAuthorize/<slug:slug>', views.AnAuthoriz.as_view(), name='anauthoriz'),
     path('anauthorizeuser', views.AnAuthorizUser.as_view(), name='anauthorizuser'),
