@@ -43,7 +43,7 @@ def on_server(user_id: str, server_id: int):
 def deposit_info(user_uuid):
     try:
         deposit = views.get_deposit_info(user_uuid)
-        if len(deposit) > 0:
+        if deposit:
             change = views.calculate_deposit(deposit[0], deposit[5], deposit[4])
             if change:
                 deposit = views.get_deposit_info(user_uuid)

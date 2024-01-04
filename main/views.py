@@ -17,10 +17,14 @@ from . import models
 from . import forms
 from . import serializers
 import psycopg2
+import logging
 import environ
 import pytz
 import uuid
 import os
+
+
+logger = logging.getLogger('main')
 
 
 # возвращает объект connection
@@ -116,24 +120,28 @@ def checking_form_data(username, password, email) -> dict:
 
 class RegistrationView(View):
     def post(self, request):
-        username = str(request.POST.get('username'))
-        password = str(request.POST.get('password'))
-        email = str(request.POST.get('email'))
+        try:
+            username = str(request.POST.get('username'))
+            password = str(request.POST.get('password'))
+            email = str(request.POST.get('email'))
 
-        # проверяем форму на валидность
-        errors = checking_form_data(username, password, email)
+            # проверяем форму на валидность
+            errors = checking_form_data(username, password, email)
 
-        if errors:
-            return JsonResponse({'status': 'error', 'errors': errors})
-        else:
-            # Создание нового пользователя
-            user = models.CustomUser.objects.create_user(username=username, password=password,
-                                                         email=email, slug=slugify(username),
-                                                         token=shortuuid.uuid()[:12])
-            user.save()
-            login(request, user)
+            if errors:
+                return JsonResponse({'status': 'error', 'errors': errors})
+            else:
+                # Создание нового пользователя
+                user = models.CustomUser.objects.create_user(username=username, password=password,
+                                                            email=email, slug=slugify(username),
+                                                            token=shortuuid.uuid()[:12])
+                user.save()
+                login(request, user)
 
-            return JsonResponse({'status': 'success'})
+                return JsonResponse({'status': 'success'})
+        except Exception as ex:
+            logger.error(ex)
+            return JsonResponse({'status': 'error'})
 
     def get(self, request):
         return render(request, 'main/register.html')
@@ -141,21 +149,32 @@ class RegistrationView(View):
 
 class UserLoginView(View):
     def get(self, request):
-        form = forms.UserLoginForm()
-        return render(request, 'main/login.html', {'form': form})
+        try:
+            form = forms.UserLoginForm()
+            return render(request, 'main/login.html', {'form': form})
+        except Exception as ex:
+            logger.error(ex)
+            return redirect('main_page')
 
     def post(self, request):
-        form = forms.UserLoginForm(data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            login(request, user)
-        return redirect('main_page')
+        try:
+            form = forms.UserLoginForm(data=request.POST)
+            if form.is_valid():
+                user = form.get_user()
+                if not user.is_banned:
+                    login(request, user)
+                return redirect('main_page')
+        except Exception as ex:
+            logger.error(ex)
 
 
 @login_required
 def user_logout(request):
-    logout(request)
-    return redirect('main_page')
+    try:
+        logout(request)
+        return redirect('main_page')
+    except Exception as ex:
+        logger.error(ex)
 
 
 def get_server_info(server_id: int) -> list:
@@ -204,7 +223,7 @@ def get_user_info(user_id: str, server_id: int=None) -> list:
         close_db(cursor, connection)
         return user_ds
     except Exception as ex:
-        print(ex)
+        logger.error(ex)
         return []
 
 
@@ -277,7 +296,7 @@ class CreateDepositView(LoginRequiredMixin, APIView):
                 connection.commit()
                 return redirect('server_info', server_id=server_id)
         except Exception as ex:
-                print(ex)
+            logger.error(ex)
         finally:
             try:
                 close_db(cursor, connection)
@@ -307,7 +326,7 @@ class DeleteDepositView(LoginRequiredMixin, APIView):
             connection.commit()
             return redirect('server_info', server_id=server_id)
         except Exception as ex:
-            print(ex)
+            logger.error(ex)
         finally:
             try:
                 close_db(cursor, connection)
@@ -319,7 +338,7 @@ class DeleteDepositView(LoginRequiredMixin, APIView):
 class ServerInfoApiView(APIView):
     def get(self, request, server_id):
         server = get_server_info(server_id)
-        return Response({'status': 'success', 'users': server})
+        return JsonResponse({'status': 'success', 'users': server})
 
 
 class ProfileView(generics.RetrieveAPIView):
@@ -333,7 +352,7 @@ class ProfileView(generics.RetrieveAPIView):
         cursor.execute(
             '''
             SELECT * FROM users WHERE user_id=%s ORDER BY points DESC;
-            ''', (user.discord_server_id, )
+            ''', (user.discord_server_id,)
         )
         user_ds = cursor.fetchall()
         close_db(cursor, connection)
@@ -347,22 +366,30 @@ class ProfileView(generics.RetrieveAPIView):
         return models.CustomUser.users.filter(slug=slug)
 
     def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        user_db = None
-        if instance.is_authorized:
-            user_db = self.get_discord_user_data(instance)
-        return render(request, 'main/profile.html', {
-                                                        'user': serializer.data,
-                                                        'user_ds': user_db
-                                                    })
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            user_ds = None
+            if instance.is_authorized:
+                user_ds = self.get_discord_user_data(instance)
+            return render(request, 'main/profile.html', {
+                                                            'user': serializer.data,
+                                                            'user_ds': user_ds
+                                                        })
+        except Exception as ex:
+            logger.error(ex)
+            return redirect('main_page')
 
 
 # возвращает информацию о пользователе на основе его id
 class UserInfoView(APIView):
     def get(self, request, user_id: str, server_id: int=None):
-        user_info = get_user_info(user_id, server_id)
-        return Response({'status': 'success', 'user_info': user_info})
+        try:
+            user_info = get_user_info(user_id, server_id)
+            return JsonResponse({'status': 'success', 'user_info': user_info})
+        except Exception as ex:
+            logger.error(ex)
+            return JsonResponse({'status': 'error'})
 
 
 '''
@@ -378,7 +405,7 @@ class AuthorizUser(APIView):
             env = environ.Env()
             environ.Env.read_env(env_file=os.path.join(BASE_DIR, '.env'))
             if access_token != env('access_token'):
-                return Response({'status': 'error', 'message': 'Incorrect access token'})
+                return JsonResponse({'status': 'error', 'message': 'Incorrect access token'})
 
             token = request.headers['Token']  # токен пользователя на сайте
             user = request.headers['User']  # id пользователя в дискорд
@@ -392,25 +419,28 @@ class AuthorizUser(APIView):
                 '''
                 если боту напишут токен с дискорд аккаунта, который уже привязан к другому аккаунту на сайте
                 '''
-                return Response({'status': 'error', 'message': 'This account already authorized'})
+                return JsonResponse({'status': 'error', 'message': 'This account already authorized'})
             else:
                 user_in_db.discord_server_id = user
                 user_in_db.is_authorized = True
                 user_in_db.save()
-                return Response({'status': 'success'})
+                return JsonResponse({'status': 'success'})
         except Exception as ex:
-            print(ex)
-            return Response({'status': 'error', 'message': 'Unknown error'})
+            logger.error(ex)
+            return JsonResponse({'status': 'error', 'message': 'Unknown error'})
 
 
 # Отвязываем аккаунт дискорда от пользователя на сервере через сайт
 class AnAuthoriz(LoginRequiredMixin, View):
     def get(self, request, slug):
-        user = models.CustomUser.objects.get(slug=slug)
-        if request.user.slug == user.slug:
-            user.is_authorized = False
-            user.discord_server_id = ' '
-            user.save()
+        try:
+            user = models.CustomUser.objects.get(slug=slug)
+            if request.user.slug == user.slug:
+                user.is_authorized = False
+                user.discord_server_id = ' '
+                user.save()
+        except Exception as ex:
+            logger.error(ex)
         return redirect('main_page')
 
 
@@ -421,7 +451,7 @@ class AnAuthorizUser(APIView):
             env = environ.Env()
             environ.Env.read_env(env_file=os.path.join(BASE_DIR, '.env'))
             if access_token != env('access_token'):
-                return Response({'status': 'error', 'message': 'Incorrect access token'})
+                return JsonResponse({'status': 'error', 'message': 'Incorrect access token'})
 
             user = request.headers['User']  # id пользователя в дискорд
             user_in_db = models.CustomUser.objects.get(discord_server_id=user)
@@ -430,12 +460,12 @@ class AnAuthorizUser(APIView):
                 user_in_db.discord_server_id = ' '
                 user_in_db.is_authorized = False
                 user_in_db.save()
-                return Response({'status': 'success', 'message': 'user authorized'})
+                return JsonResponse({'status': 'success', 'message': 'user authorized'})
             else:
-                return Response({'status': 'error', 'message': 'user not found'})
+                return JsonResponse({'status': 'error', 'message': 'user not found'})
         except Exception as ex:
-            print(ex)
-            return Response({'status': 'error', 'message': 'Unknown error'})
+            logger.error(ex)
+            return JsonResponse({'status': 'error', 'message': 'Unknown error'})
 
 
 

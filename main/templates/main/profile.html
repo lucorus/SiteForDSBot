@@ -265,7 +265,7 @@ a.button6:active
         {% endif %}
 
         {% if user.is_authorized == False %}
-            {% if user.pk == request.user.pk %}
+            {% if user.id == request.user.pk %}
                 <button class="glow-on-hover" onclick="toggleSecret()">Открыть токен</button>
                 <div style="display: none;" id="secret" class="secret-code">
                     {{ user.token }}
