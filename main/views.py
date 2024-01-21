@@ -1,4 +1,4 @@
-from django.views.generic import ListView, DetailView, FormView
+from django.views.generic import ListView, FormView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout
@@ -10,88 +10,17 @@ from django.utils.text import slugify
 from django.shortcuts import redirect
 from django.http import JsonResponse
 from django.shortcuts import render
-from datetime import datetime
 from django.views import View
 import shortuuid as shortuuid
-from typing import Union
 from . import serializers
-from . import models
+from . import functions
 from . import forms
-import psycopg2
+from . import models
 import logging
 import environ
-import pytz
-import uuid
 import os
 
-
 logger = logging.getLogger('main')
-try:
-    env = environ.Env()
-    environ.Env.read_env(env_file=os.path.join(BASE_DIR, '.env'))
-    host = env('host')
-    user = env('user')
-    password = env('password')
-    database = env('database')
-
-    with psycopg2.connect(
-        host=host,
-        user=user,
-        password=password,
-        database=database,
-    ) as connection:
-        cursor = connection.cursor()
-except Exception as ex:
-    logger.critical(ex)
-
-
-def time_now() -> str:
-    timezone = pytz.timezone('Europe/Moscow')
-    moscow_time = datetime.now(timezone)
-    formatted_time = moscow_time.strftime('%Y/%m/%d/%H/%M')
-    return formatted_time
-
-
-# возвращает id пользователя, если пользователь на сервере, иначе false
-def on_server(user_id: str, server_id: int) -> Union[str, bool]:
-    cursor.execute(
-        '''
-        SELECT user_id FROM users WHERE server_id=%s
-        ''', (server_id, )
-    )
-    users = cursor.fetchall()
-
-    if (user_id,) in users:
-        return user_id
-    return False
-
-
-def get_deposit_info(user_uuid: str) -> list:
-    deposit = []
-    try:
-        cursor.execute(
-            '''
-            SELECT * FROM deposit WHERE investor=%s
-            ''', (user_uuid, )
-        )
-        deposit = cursor.fetchone()
-    except Exception as ex:
-        logger.error(ex)
-    return deposit
-
-
-# возвращает данные о 100 пользователях с самым большим количеством баллов / пользователях одного сервера
-def get_users_info(server_id: int=None) -> list:
-    users = []
-    try:
-        if server_id == None:
-            cursor.execute("SELECT * FROM users ORDER BY points DESC LIMIT 100")
-        else:
-            cursor.execute("SELECT * FROM users WHERE server_id=%s ORDER BY points DESC", (server_id, ))
-        users = cursor.fetchall()
-    except Exception as ex:
-        logger.error(ex)
-    return users
 
 
 class MainView(ListView, FormView):
@@ -101,20 +30,8 @@ class MainView(ListView, FormView):
     form_class = forms.UserLoginForm
 
     def get_queryset(self):
-        users = get_users_info()
+        users = functions.get_users_info()
         return users
-
-
-# Проверяет данные формы на валидность и возвращает словарь с ошибками
-def checking_form_data(username, password, email) -> dict:
-    errors = {}
-    if models.CustomUser.objects.filter(username__iexact=username).exists():
-        errors['username'] = 'Пользователь с таким именем уже существует!'
-    if len(password) < 8:
-        errors['password'] = 'Пароль должен состоять минимум из 8 символов'
-    if models.CustomUser.objects.filter(email__iexact=email).exists():
-        errors['email'] = 'Пользователь с такой почтой уже существует!'
-    return errors
 
 
 class RegistrationView(View):
@@ -125,7 +42,7 @@ class RegistrationView(View):
             email = str(request.POST.get('email'))
 
             # проверяем форму на валидность
-            errors = checking_form_data(username, password, email)
+            errors = functions.checking_form_data(username, password, email)
 
             if errors:
                 return JsonResponse({'status': 'error', 'errors': errors})
@@ -182,87 +99,43 @@ class ServerInfoView(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        server = get_users_info(int(self.kwargs['server_id']))
+        server = functions.get_users_info(int(self.kwargs['server_id']))
         return server
 
-
-# возвращает информацию о всех серверах, где есть пользователь / о сервере с переданным id
-def get_user_info(user_id: str, server_id: int=None) -> list:
-    try:
-        if not server_id:
-            # если id сервера нет, то возвращаем все сервера с данным юзером
-            cursor.execute(
-                '''
-                SELECT * FROM users WHERE user_id=%s ORDER BY points DESC;
-                ''', (user_id,)
-            )
-        else:
-            # иначе только сервер с указанным id
-            cursor.execute(
-                '''
-                SELECT * FROM users WHERE user_id=%s AND server_id=%s;
-                ''', (user_id, server_id)
-            )
-        user_ds = cursor.fetchall()
-        return user_ds
-    except Exception as ex:
-        logger.error(ex)
-        return []
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        guild = functions.get_guild(self.kwargs['server_id'])
+        context['guild'] = guild
+        return context
 
 
-# Вычисляет сколько баллов получил пользователь по депозиту с процентом contribution_coefficient
-def calculate_percent(points, time_delta) -> int:
-    points = points * 0.05 + points
-    time_delta -= 1
-    if time_delta > 0:
-        return calculate_percent(points, time_delta)
-    else:
-        return round(points)
-
-
-# Изменяет кол-во баллов пользователя по его вкладу в базе данных (возвращает True если было изменение, а иначе False)
-def calculate_deposit(deposit_uuid: str, points: int, deposit_last_update_time_time: str) -> bool:
-    try:
-        # находим кол-во дней со дня создания счёта
-        time_delta = datetime.strptime(time_now(), "%Y/%m/%d/%H/%M") \
-                 - datetime.strptime(deposit_last_update_time_time, "%Y/%m/%d/%H/%M")
-        time_delta = time_delta.total_seconds() // 86400
-
-        # если прошло больше дня, то изменяем кол-во баллов на счёте
-        if time_delta >= 1:
-            points = calculate_percent(points, time_delta)
-            cursor.execute(
-                '''
-                UPDATE deposit SET current_points=%s AND last_update=%s WHERE uuid=%s
-                ''', points, time_now(), deposit_uuid)
-            connection.commit()
-            return True
-    except Exception as ex:
-        logger.error(ex)
-    return False
+class GetDepositInfoAPI(APIView):
+    def get(self, request, user_uuid: str):
+        try:
+            deposit = functions.get_deposit_info(user_uuid)
+            if deposit:
+                change = functions.calculate_deposit(deposit[0], deposit[5], deposit[4])
+                if change:
+                    deposit = functions.get_deposit_info(user_uuid)
+                return JsonResponse({'status': 'success', 'data': deposit})
+            else:
+                return JsonResponse({'status': 'error'})
+        except Exception as ex:
+            logger.error(ex)
+            return JsonResponse({'status': 'error'})
 
 
 # отображает информацию о депозите / выводит форму для создания депозита
-class DepositView(LoginRequiredMixin, APIView):
+class DepositView(LoginRequiredMixin, View):
     def get(self, request, user_id: str, server_id: int):
-        user_data = get_user_info(user_id=user_id, server_id=server_id)
-        return render(request, 'main/server_functional.html', {'user_ds': user_data[0]})
+        try:
+            user_data = functions.get_user_info(user_id=user_id, guild_id=server_id)[0]
+            return render(request, 'main/server_functional.html', {'user_ds': user_data})
+        except Exception as ex:
+            print(ex)
+            return render(request, 'main/server_functional.html', {'user_ds': []})
 
 
-def create_deposit(user_uuid: str, user_points: int, points: int) -> None:
-    cursor.execute(
-        '''
-        INSERT INTO deposit VALUES(%s, %s, %s, %s, %s, %s);
-        UPDATE users SET points=%s WHERE uuid=%s;
-        ''', (
-            str(uuid.uuid4()), user_uuid, points, time_now(),
-            time_now(), points, user_points - points, user_uuid
-        )
-    )
-    connection.commit()
-
-
-# создаёт депозит
 class CreateDepositView(LoginRequiredMixin, APIView):
     def post(self, request):
         try:
@@ -274,24 +147,13 @@ class CreateDepositView(LoginRequiredMixin, APIView):
             if points < 20 or user_points < points:
                 return redirect('server_info', server_id=server_id)
             else:
-                create_deposit(user_uuid, user_points, points)
+                functions.create_deposit(user_uuid, user_points, points)
                 return redirect('server_info', server_id=server_id)
         except Exception as ex:
             logger.error(ex)
         return redirect('main_page')
 
 
-def delete_deposit(deposit_uuid: str, user_points: int, deposit_points: int, user_uuid: str) -> None:
-    cursor.execute(
-        '''
-        DELETE FROM deposit WHERE uuid=%s;
-        UPDATE users SET points=%s WHERE uuid=%s
-        ''', (deposit_uuid, user_points + deposit_points, user_uuid)
-    )
-    connection.commit()
-
-
-# удаляет депозит
 class DeleteDepositView(LoginRequiredMixin, APIView):
     def post(self, request):
         try:
@@ -301,7 +163,7 @@ class DeleteDepositView(LoginRequiredMixin, APIView):
             deposit_points = int(request.POST.get('deposit_points'))
             server_id = int(request.POST.get('server_id'))
 
-            delete_deposit(deposit_uuid, user_points, deposit_points, user_uuid)
+            functions.delete_deposit(deposit_uuid, user_points, deposit_points, user_uuid)
             return redirect('server_info', server_id=server_id)
         except Exception as ex:
             logger.error(ex)
@@ -310,7 +172,7 @@ class DeleteDepositView(LoginRequiredMixin, APIView):
 
 class ServerInfoApiView(APIView):
     def get(self, request, server_id):
-        server = get_users_info(server_id)
+        server = functions.get_users_info(server_id)
         return JsonResponse({'status': 'success', 'users': server})
 
 
@@ -332,7 +194,7 @@ class ProfileView(generics.RetrieveAPIView):
             user_ds = None
             if instance.is_authorized:
                 # если пользователь авторизован, то возвращаем данные о его дискорд аккаунте
-                user_ds = get_user_info(instance.discord_server_id)
+                user_ds = functions.get_user_info(instance.discord_server_id)
             return render(request, 'main/profile.html', {
                                                             'user': serializer.data,
                                                             'user_ds': user_ds
@@ -346,7 +208,7 @@ class ProfileView(generics.RetrieveAPIView):
 class UserInfoView(APIView):
     def get(self, request, user_id: str, server_id: int=None):
         try:
-            user_info = get_user_info(user_id, server_id)
+            user_info = functions.get_user_info(user_id, server_id)
             return JsonResponse({'status': 'success', 'user_info': user_info})
         except Exception as ex:
             logger.error(ex)

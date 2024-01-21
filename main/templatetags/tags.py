@@ -1,5 +1,5 @@
 from django import template
-from .. import views
+from .. import functions
 import logging
 
 logger = logging.getLogger('main')
@@ -17,14 +17,17 @@ def percent(exp):
 # возвращает кол-во уровней у пользователя
 @register.simple_tag(name='level')
 def level(exp):
-    return int(exp) // 100
+    try:
+        return int(exp) // 100
+    except:
+        return 0
 
 
 # возвращает id пользователя в дискорд если он есть на переданном сервере
 @register.simple_tag(name='on_server')
-def on_server(user_id: str, server_id: int):
+def on_server(user_id: int, server_id: int):
     try:
-        return views.on_server(user_id, server_id)
+        return functions.on_server(int(user_id), server_id)
     except Exception as ex:
         logger.error(ex)
         return False
@@ -34,11 +37,11 @@ def on_server(user_id: str, server_id: int):
 @register.simple_tag(name='deposit_info')
 def deposit_info(user_uuid):
     try:
-        deposit = views.get_deposit_info(user_uuid)
+        deposit = functions.get_deposit_info(user_uuid)
         if deposit:
-            change = views.calculate_deposit(deposit[0], deposit[5], deposit[4])
+            change = functions.calculate_deposit(deposit[0], deposit[5], deposit[4])
             if change:
-                deposit = views.get_deposit_info(user_uuid)
+                deposit = functions.get_deposit_info(user_uuid)
             return deposit
         else:
             return False

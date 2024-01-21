@@ -37,24 +37,24 @@
         <tr>
             <td class="user-number"></td>
             <td>
-                {% if user.9 != "None" %}
-                <a href="{{ user.9 }}"><img src="{{ user.9 }}" alt="" class="enlarge-image avatar"></a>
+                {% if user.7 != "None" %}
+                <a href="{{ user.7 }}"><img src="{{ user.7 }}" alt="" class="enlarge-image avatar"></a>
                 {% else %}
                 <img class="avatar" src="{% static 'img/noimg.png' %}">
                 {% endif %}
             </td>
-            <td>{{ user.8 }}</td>
+            <td>{{ user.6 }}</td>
             <td>{{ user.2 }}</td>
             <td>
                 <a href="{% url 'server_info' server_id=user.5 %}">
-                {% if user.7 != "None" %}
-                <img src="{{ user.7 }}" class="avatar">
+                {% if user.11 != "None" %}
+                <img src="{{ user.11 }}" class="avatar">
                 {% else %}
                 <img class="avatar" src="{% static 'img/noimg.png' %}">
                 {% endif %}
                 </a>
             </td>
-            <td><a href="{% url 'server_info' server_id=user.5 %}">{{ user.6 }}</a></td>
+            <td><a href="{% url 'server_info' server_id=user.9 %}">{{ user.10 }}</a></td>
 
         </tr>
     {% endfor %}

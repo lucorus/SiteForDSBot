@@ -4,7 +4,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>{{ user_ds.6 }}</title>
     <link rel="stylesheet" href="{% static 'css/server_functional_style.css' %}">
 </head>
 <body>
@@ -41,7 +41,7 @@
         <p><b>Информация о вкладе:</b></p>
         <p>Дата создания: {{ deposit.3 }}</p>
         <p>Изначальное количество баллов: {{ deposit.2 }}</p>
-        <p>Конечное количество баллов: {{ deposit.5 }}</p>
+        <p>Доступно для вывода: {{ deposit.5 }}</p>
     </div>
     {% else %}
         <br>

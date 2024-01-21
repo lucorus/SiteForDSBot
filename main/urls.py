@@ -16,6 +16,7 @@ urlpatterns = [
     path('change_token', views.ChangeToken.as_view(), name='change_token'),
 
     # api
+    path('deposit/<str:user_uuid>', views.GetDepositInfoAPI.as_view(), name='get_deposit_info'),
     path('user/<str:user_id>/<int:server_id>', views.UserInfoView.as_view(), name='user_info'),
     path('user/<str:user_id>', views.UserInfoView.as_view(), name='user_info'),
     path('server_info_api/<int:server_id>', views.ServerInfoApiView.as_view(), name='server_info_api'),

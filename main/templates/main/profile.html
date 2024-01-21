@@ -6,9 +6,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ user.user.username }}</title>
+    <title>Профиль {{ user.username }}'a</title>
     <link rel="stylesheet" type="text/css" href="{% static 'css/card_style.css' %}">
-<!--    <link rel="stylesheet" href="{% static 'css/profile_style.css' %}">-->
     <style>
     #popup-container {
       display: none;
@@ -248,8 +247,8 @@ a.button6:active
 <div class="profile-container">
     <div class="profile-header">
         {% if user_ds %}
-            {% if user_ds.0.9 != "None" %}
-            <img src="{{ user_ds.0.9 }}" class="user_avatar">
+            {% if user_ds.0.7 != "None" %}
+            <img src="{{ user_ds.0.7 }}" class="user_avatar">
             {% else %}
             <img src="{% static 'img/noimg.png' %}" class="user_avatar">
             {% endif %}
@@ -259,7 +258,7 @@ a.button6:active
 
         <h1>{{ user.username }}</h1>
         {% if user_ds %}
-        <h2>{{ user_ds.0.8 }}</h2>
+        <h2>{{ user_ds.0.6 }}</h2>
         {% else %}
         <h2>Дискорд аккаунт ещё не привязан!</h2>
         {% endif %}
@@ -268,7 +267,14 @@ a.button6:active
             {% if user.id == request.user.pk %}
                 <button class="glow-on-hover" onclick="toggleSecret()">Открыть токен</button>
                 <div style="display: none;" id="secret" class="secret-code">
-                    {{ user.token }} <a href="{% url 'change_token' %}">()</a>
+                    {{ user.token }} <a href="{% url 'change_token' %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
+                         class="bi bi-arrow-repeat" viewBox="0 0 16 12">
+                        <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41m-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9"/>
+                        <path fill-rule="evenodd"
+                              d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5 5 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z"/>
+                    </svg>
+                    </a>
                 </div>
             {% endif %}
         {% else %}
@@ -312,16 +318,16 @@ a.button6:active
             <td class="user-number"></td>
             <td>
                 <a href="/server_info/{{ item.5 }}">
-                    {% if item.7 != "None" %}
-                    <img src="{{ item.7 }}" class="avatar">
+                    {% if item.11 != "None" %}
+                    <img src="{{ item.11 }}" class="avatar">
                     {% else %}
                     <img class="avatar" src="{% static 'img/noimg.png' %}">
                     {% endif %}
                 </a>
             </td>
-            <td><a href="/server_info/{{ item.5 }}">{{ item.6 }}</a></td>
+            <td><a href="/server_info/{{ item.5 }}">{{ item.10 }}</a></td>
             <td>{{ item.2 }}</td>
-            <td>{% level item.10 %}</td>
+            <td>{% level item.8 %}</td>
         </tr>
         {% endfor %}
         </tbody>
